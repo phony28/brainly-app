@@ -29,15 +29,15 @@ const LinkSchema = new Schema({
 export const LinkModel = model("Links", LinkSchema);
 
 export const connectDB = async () => {
-    const mongoUrl = process.env.MONGO_URI;
+    const mongoUrl = process.env.MONGO_URI || process.env.MONGO_URL;
     if (!mongoUrl) {
-        console.error("MONGO_URI is missing in .env file");
-        return;
+        throw new Error("MONGO_URI (or MONGO_URL) is missing from the backend .env file.");
     }
     try {
         await mongoose.connect(mongoUrl);
         console.log("Connected to MongoDB!");
     } catch (err) {
         console.error("Error connecting to MongoDB:", err);
+        throw err;
     }
 };

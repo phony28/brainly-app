@@ -27,8 +27,8 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
-// Connect to MongoDB
-connectDB();
+// Do not accept requests until the database is ready.
+await connectDB();
 
 app.post("/api/v1/signup", async (req, res) => {
     const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
