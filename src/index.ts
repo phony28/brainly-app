@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { User, ContentModel, LinkModel, connectDB } from './db.js';
 import { JWT_PASSWORD } from './config.js';
 import { userMiddleware, UserMiddlware } from './middleware.js';
@@ -44,9 +45,10 @@ app.post("/api/v1/signup", async (req, res) => {
     }
 
     try {
+        const passwordHash = await bcrypt.hash(password, 12);
         await User.create({
             username: username,
-            password: password
+            password: passwordHash
         });
 
         res.json({
@@ -71,12 +73,22 @@ app.post("/api/v1/signin", async (req, res) => {
         return;
     }
 
-    const existingUser = await User.findOne({
-        username: username,
-        password: password
-    });
+    const existingUser = await User.findOne({ username });
+    let passwordMatches = false;
 
     if (existingUser) {
+        const storedPassword = existingUser.password;
+        if (typeof storedPassword === "string" && /^\$2[aby]\$/.test(storedPassword)) {
+            passwordMatches = await bcrypt.compare(password, storedPassword);
+        } else if (storedPassword === password) {
+            // Upgrade accounts created before password hashing was added.
+            existingUser.password = await bcrypt.hash(password, 12);
+            await existingUser.save();
+            passwordMatches = true;
+        }
+    }
+
+    if (existingUser && passwordMatches) {
         const token = jwt.sign({
             id: existingUser._id
         }, JWT_PASSWORD);
